@@ -1,7 +1,8 @@
-from freetype import *
-import numpy as np
-import cv2
 from os import path, mkdir
+
+import numpy as np
+import matplotlib.pyplot as plt
+from freetype import *
 
 def save_fonts(ttf_path, save_dir, font_size=32):
     if not path.exists(save_dir):
@@ -21,17 +22,15 @@ def save_fonts(ttf_path, save_dir, font_size=32):
         h = bitmap.rows
         w = bitmap.width
 
-        x = (font_size - w) //2
-        y = (font_size - h) //2
+        x = (font_size - h) // 2
+        y = (font_size - w) // 2
 
         imgpath = os.path.join(save_dir, f'{c}.png')
-        img = np.zeros((font_size, font_size, 1), dtype='uint8')
+        img = np.zeros((font_size, font_size), dtype='uint8')
 
-        for i in range(h):
-            for j in range(w):
-                img[y+i][x+j] = bitmap.buffer[i*w + j]
+        img[x:x+h, y:y+w] = np.reshape(bitmap.buffer, (h, w))
 
-        cv2.imwrite(imgpath, img)
+        plt.imsave(imgpath, img, cmap='gray')
 
 if __name__ == '__main__':
     ttf_path = './Hack-Regular.ttf'
