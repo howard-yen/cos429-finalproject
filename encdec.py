@@ -1,8 +1,11 @@
+import os
 import random
 
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn, optim
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms
 
 random.seed(999)
 torch.manual_seed(999)
@@ -11,12 +14,43 @@ torch.manual_seed(999)
 device = "cpu"
 # TODO: make sure to .to(device) the class later, and also set up gpu
 
+# root directory for dataset
+dataroot = "data/fonts/"
+# number of workers for dataloader
+workers = 2
+# number of epochs
+num_epochs = 5
+# batch size for training
+batch_size = 128
 # height and width of input image
 img_size = 32
 # number of channels
 nc0 = 1
 nc1 = 4
 nc2 = 8
+# learning rate
+lr = 0.0002
+# beta1 for Adam
+beta1 = 0.5
+
+class FontDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        self.root_dir = root_dir
+        self.transform = transform
+
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+
+        img_path1 = os.path.join(self.root_dir, "a/", idx, ".png")
+        img_path2 = os.path.join(self.root_dir, "b/", idx, ".png")
+
+        img1 = io.imread(img_path1)
+        img2 = io.imread(img_path2)
+        # transfomrs
+        sample = {'char1': img1, 'char2': img2}
+
+        return sample
 
 class EncoderDecoder(nn.Module):
     def __init__(self):
@@ -32,20 +66,46 @@ class EncoderDecoder(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.softmax = nn.Softmax()
 
-    def forward(self, input):
-        self.conv1(input)
-        self.batchnorm1()
-        self.relu()
-        self.conv2()
-        self.pool()
-        self.batchnorm1()
-        self.relu()
-        self.pool()
-        self.unpool()
-        self.deconv2()
-        self.batchnorm2()
-        self.relu()
-        self.deconv1()
-        self.batchnorm1()
-        self.relu()
-        self.softmax()
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.batchnorm1(x)
+        x = self.relu(x)
+        x, idx1 = self.pool(x)
+
+        x = self.conv2(x)
+        x = self.batchnorm1(x)
+        x = self.relu(x)
+        x, idx2 = self.pool(x)
+
+        x = self.unpool(x, idx2)
+        x = self.deconv2(x)
+        x = self.batchnorm2(x)
+        x = self.relu(x)
+
+        x = self.unpool(x, idx1)
+        x = self.deconv1(x)
+        x = self.batchnorm1(x)
+        x = self.relu(x)
+
+        x = self.softmax(x)
+        return x
+
+                           transform=transforms.Compose([
+                               transforms.Grayscale(),
+                               transforms.ToTensor(),
+                               transforms.Normalize(0.5, 0.5),
+                           ]))
+
+dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+
+encdec = EncoderDecoder()
+loss = nn.L1Loss()
+optimizer = optim.Adam(encdec.parameters(), lr=lr, betas=(beta1, 0.999))
+
+# training loop
+for epoch in range(num_epochs):
+    for i, data in enumerate(dataloader):
+        # zero out gradients
+        encdec.zero_grad()
+        output = encdec(data)
+        print(output.shape)
