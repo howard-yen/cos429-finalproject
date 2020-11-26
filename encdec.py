@@ -2,6 +2,7 @@ import os
 import random
 
 import numpy as np
+import pandas as pd
 import torch
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
@@ -14,6 +15,8 @@ torch.manual_seed(999)
 device = "cpu"
 # TODO: make sure to .to(device) the class later, and also set up gpu
 
+# path to font list
+fonts_csv = "data/fonts.csv"
 # root directory for dataset
 dataroot = "data/fonts/"
 # number of workers for dataloader
@@ -21,7 +24,7 @@ workers = 2
 # number of epochs
 num_epochs = 5
 # batch size for training
-batch_size = 128
+batch_size = 4
 # height and width of input image
 img_size = 32
 # number of channels
@@ -34,9 +37,13 @@ lr = 0.0002
 beta1 = 0.5
 
 class FontDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, csv_file, root_dir, transform=None):
+        self.fontlist = pd.read_csv(csv_file)
         self.root_dir = root_dir
         self.transform = transform
+
+    def __len__(self):
+        return len(self.fontlist)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
@@ -47,7 +54,10 @@ class FontDataset(Dataset):
 
         img1 = io.imread(img_path1)
         img2 = io.imread(img_path2)
-        # transfomrs
+
+        img1 = self.transform(img1)
+        img2 = self.transform(img2)
+
         sample = {'char1': img1, 'char2': img2}
 
         return sample
@@ -90,22 +100,32 @@ class EncoderDecoder(nn.Module):
         x = self.softmax(x)
         return x
 
-                           transform=transforms.Compose([
-                               transforms.Grayscale(),
-                               transforms.ToTensor(),
-                               transforms.Normalize(0.5, 0.5),
-                           ]))
+dataset = FontDataset(csv_file=fonts_csv, root_dir=dataroot, transform=transforms.Compose([
+                                    transforms.Grayscale(),
+                                    transforms.ToTensor(),
+                                    transforms.Normalize(0.5, 0.5),
+                                ]))
 
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
 encdec = EncoderDecoder()
-loss = nn.L1Loss()
+criterion = nn.L1Loss()
 optimizer = optim.Adam(encdec.parameters(), lr=lr, betas=(beta1, 0.999))
 
 # training loop
 for epoch in range(num_epochs):
+    running_loss = 0.0
     for i, data in enumerate(dataloader):
         # zero out gradients
         encdec.zero_grad()
-        output = encdec(data)
-        print(output.shape)
+        output = encdec(data[0])
+        loss = criterion(output, data[1])
+        loss.backward()
+        optimizer.step()
+
+        running_loss += loss.item()
+        if i % 100 == 99:
+            print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
+            running_loss = 0.0
+
+print("Done")
