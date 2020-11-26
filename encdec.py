@@ -18,7 +18,7 @@ device = "cpu"
 # path to font list
 fonts_csv = "data/fonts.csv"
 # root directory for dataset
-dataroot = "data/fonts/"
+dataroot = "data/fonts"
 # number of workers for dataloader
 workers = 2
 # number of epochs
