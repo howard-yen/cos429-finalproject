@@ -16,17 +16,17 @@ device = "cpu"
 # TODO: make sure to .to(device) the class later, and also set up gpu
 
 # path to font list
-fonts_csv = "data/fonts.csv"
+fonts_csv = "fonts.csv"
 # root directory for dataset
-dataroot = "data/fonts"
+dataroot = "images"
 # number of workers for dataloader
-workers = 2
+workers = 0
 # number of epochs
 num_epochs = 5
 # batch size for training
 batch_size = 4
 # height and width of input image
-img_size = 32
+img_size = 48
 # number of channels
 nc0 = 1
 nc1 = 4
@@ -38,7 +38,7 @@ beta1 = 0.5
 
 class FontDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
-        self.fontlist = pd.read_csv(csv_file)
+        self.fontlist = pd.read_csv(csv_file, sep=' ')
         self.root_dir = root_dir
         self.transform = transform
 
@@ -49,16 +49,16 @@ class FontDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path1 = os.path.join(self.root_dir, "a/", idx, ".png")
-        img_path2 = os.path.join(self.root_dir, "b/", idx, ".png")
+        img_path1 = os.path.join(self.root_dir, "a/", f"{idx}.npy")
+        img_path2 = os.path.join(self.root_dir, "b/", f"{idx}.npy")
 
-        img1 = io.imread(img_path1)
-        img2 = io.imread(img_path2)
+        img1 = np.load(img_path1)
+        img2 = np.load(img_path2)
 
         img1 = self.transform(img1)
         img2 = self.transform(img2)
 
-        sample = {'char1': img1, 'char2': img2}
+        sample = {'c1': img1, 'c2': img2}
 
         return sample
 
@@ -100,11 +100,12 @@ class EncoderDecoder(nn.Module):
         x = self.softmax(x)
         return x
 
-dataset = FontDataset(csv_file=fonts_csv, root_dir=dataroot, transform=transforms.Compose([
-                                    transforms.Grayscale(),
-                                    transforms.ToTensor(),
-                                    transforms.Normalize(0.5, 0.5),
-                                ]))
+dataset = FontDataset(csv_file=fonts_csv, 
+                      root_dir=dataroot, 
+                      transform=transforms.Compose([
+                          transforms.ToTensor(),
+                          transforms.Normalize(0.5, 0.5),
+                      ]))
 
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
 
@@ -118,8 +119,8 @@ for epoch in range(num_epochs):
     for i, data in enumerate(dataloader):
         # zero out gradients
         encdec.zero_grad()
-        output = encdec(data[0])
-        loss = criterion(output, data[1])
+        output = encdec(data['c1'])
+        loss = criterion(output, data['c2'])
         loss.backward()
         optimizer.step()
 
