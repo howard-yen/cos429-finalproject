@@ -22,9 +22,9 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 5
+num_epochs = 20
 # batch size for training
-batch_size = 4
+batch_size = 8
 # height and width of input image
 img_size = 48
 # number of channels
@@ -69,6 +69,7 @@ class EncoderDecoder(nn.Module):
         self.conv2 = nn.Conv2d(nc1, nc2, 3, padding=1)
         self.deconv1 = nn.ConvTranspose2d(nc1, nc0, 3, padding=1)
         self.deconv2 = nn.ConvTranspose2d(nc2, nc1, 3, padding=1)
+        self.batchnorm0 = nn.BatchNorm2d(nc0)
         self.batchnorm1 = nn.BatchNorm2d(nc1)
         self.batchnorm2 = nn.BatchNorm2d(nc2)
         self.pool = nn.MaxPool2d(2, return_indices=True)
@@ -83,18 +84,18 @@ class EncoderDecoder(nn.Module):
         x, idx1 = self.pool(x)
 
         x = self.conv2(x)
-        x = self.batchnorm1(x)
+        x = self.batchnorm2(x)
         x = self.relu(x)
         x, idx2 = self.pool(x)
 
         x = self.unpool(x, idx2)
         x = self.deconv2(x)
-        x = self.batchnorm2(x)
+        x = self.batchnorm1(x)
         x = self.relu(x)
 
         x = self.unpool(x, idx1)
         x = self.deconv1(x)
-        x = self.batchnorm1(x)
+        x = self.batchnorm0(x)
         x = self.relu(x)
 
         x = self.softmax(x)
