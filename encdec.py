@@ -1,6 +1,5 @@
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
@@ -19,9 +18,9 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 100
+num_epochs = 50
 # batch size for training
-batch_size = 8
+batch_size = 32
 # height and width of input image
 img_size = 48
 # number of channels
@@ -29,7 +28,7 @@ nc0 = 1
 nc1 = 4
 nc2 = 8
 # learning rate
-lr = 0.0002
+lr = 0.002
 # beta1 for Adam
 beta1 = 0.5
 
@@ -46,7 +45,7 @@ class FontDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path1 = os.path.join(self.root_dir, "a/", f"{idx}.npy")
+        img_path1 = os.path.join(self.root_dir, "p/", f"{idx}.npy")
         img_path2 = os.path.join(self.root_dir, "b/", f"{idx}.npy")
 
         img1 = np.load(img_path1)
@@ -96,36 +95,39 @@ class EncoderDecoder(nn.Module):
 
         return x
 
-dataset = FontDataset(csv_file=fonts_csv, 
-                      root_dir=dataroot, 
-                      transform=transforms.Compose([
-                          transforms.ToTensor(),
-                          #transforms.Normalize(0.5, 0.5),
-                      ]))
+def main():
 
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+    dataset = FontDataset(csv_file=fonts_csv, 
+                        root_dir=dataroot, 
+                        transform=transforms.Compose([
+                            transforms.ToTensor(),
+                            #transforms.Normalize(0.5, 0.5),
+                        ]))
+    
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+    
+    encdec = EncoderDecoder()
+    criterion = nn.L1Loss()
+    optimizer = optim.Adam(encdec.parameters(), lr=lr)
+    
+    # training loop
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        for i, data in enumerate(dataloader):
+            # zero out gradients
+            encdec.zero_grad()
+            output = encdec(data['c1'])
+            loss = criterion(output, data['c2'])
+            loss.backward()
+            optimizer.step()
+    
+            running_loss += loss.item()
+            if i % 100 == 99:
+                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
+                running_loss = 0.0
+    
+    torch.save(encdec.state_dict(), 'encdec.pt')
+    print("Done")
 
-encdec = EncoderDecoder()
-criterion = nn.L1Loss()
-optimizer = optim.Adam(encdec.parameters(), lr=lr, betas=(beta1, 0.999))
-
-# training loop
-for epoch in range(num_epochs):
-    running_loss = 0.0
-    for i, data in enumerate(dataloader):
-        # zero out gradients
-        encdec.zero_grad()
-        output = encdec(data['c1'])
-        if epoch > 95:
-            plt.imshow(output[0].permute(1, 2, 0).detach().numpy())
-            plt.show()
-        loss = criterion(output, data['c2'])
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-        if i % 100 == 99:
-            print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
-            running_loss = 0.0
-
-print("Done")
+if __name__=='__main__':
+    main()
