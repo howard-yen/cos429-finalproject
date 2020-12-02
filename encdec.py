@@ -1,15 +1,12 @@
 import os
-import random
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-
-random.seed(999)
-torch.manual_seed(999)
 
 #device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 device = "cpu"
@@ -22,7 +19,7 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 20
+num_epochs = 100
 # batch size for training
 batch_size = 8
 # height and width of input image
@@ -75,7 +72,6 @@ class EncoderDecoder(nn.Module):
         self.pool = nn.MaxPool2d(2, return_indices=True)
         self.unpool = nn.MaxUnpool2d(2)
         self.relu = nn.ReLU(inplace=True)
-        self.softmax = nn.Softmax()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -98,14 +94,13 @@ class EncoderDecoder(nn.Module):
         x = self.batchnorm0(x)
         x = self.relu(x)
 
-        x = self.softmax(x)
         return x
 
 dataset = FontDataset(csv_file=fonts_csv, 
                       root_dir=dataroot, 
                       transform=transforms.Compose([
                           transforms.ToTensor(),
-                          transforms.Normalize(0.5, 0.5),
+                          #transforms.Normalize(0.5, 0.5),
                       ]))
 
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
@@ -121,6 +116,9 @@ for epoch in range(num_epochs):
         # zero out gradients
         encdec.zero_grad()
         output = encdec(data['c1'])
+        if epoch > 95:
+            plt.imshow(output[0].permute(1, 2, 0).detach().numpy())
+            plt.show()
         loss = criterion(output, data['c2'])
         loss.backward()
         optimizer.step()
