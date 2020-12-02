@@ -45,7 +45,7 @@ class FontDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path1 = os.path.join(self.root_dir, "p/", f"{idx}.npy")
+        img_path1 = os.path.join(self.root_dir, "d/", f"{idx}.npy")
         img_path2 = os.path.join(self.root_dir, "b/", f"{idx}.npy")
 
         img1 = np.load(img_path1)
@@ -71,6 +71,7 @@ class EncoderDecoder(nn.Module):
         self.pool = nn.MaxPool2d(2, return_indices=True)
         self.unpool = nn.MaxUnpool2d(2)
         self.relu = nn.ReLU(inplace=True)
+        self.tanh = nn.Tanh()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -93,6 +94,7 @@ class EncoderDecoder(nn.Module):
         x = self.batchnorm0(x)
         x = self.relu(x)
 
+        x = self.tanh(x)
         return x
 
 def main():
