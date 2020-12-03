@@ -1,5 +1,6 @@
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
@@ -27,10 +28,15 @@ img_size = 48
 nc0 = 1
 nc1 = 4
 nc2 = 8
+nc3 = 16
 # learning rate
 lr = 0.002
 # beta1 for Adam
 beta1 = 0.5
+# real label
+real_label = 1.0
+# fake label
+fake_label = 1.0
 
 class FontDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
@@ -97,6 +103,31 @@ class EncoderDecoder(nn.Module):
         x = self.sigmoid(x)
         return x
 
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.main = nn.Sequential(
+            # 1 x img_size x img_size
+            nn.Conv2d(nc0, nc1, 4, stride=2, padding=1),
+            nn.BatchNorm2d(nc1),
+            nn.ReLU(inplace=True),
+            # 4 x img_size/2 x img_size/2
+            nn.Conv2d(nc1, nc2, 4, stride=2, padding=1),
+            nn.BatchNorm2d(nc2),
+            nn.ReLU(inplace=True),
+            # 8 x img_size/4 x img_size/4
+            nn.Conv2d(nc2, nc3, 4, stride=2, padding=1),
+            nn.BatchNorm2d(nc3),
+            nn.ReLU(inplace=True),
+            # 16 x img_size/8 x img_size/8
+            nn.Flatten(),
+            nn.Linear(nc3 * img_size // 8 * img_size // 8, 1),
+            nn.Softmax(dim=0),
+        )
+
+    def forward(self, input):
+        return self.main(input)
+
 def main():
 
     dataset = FontDataset(csv_file=fonts_csv, 
@@ -109,22 +140,54 @@ def main():
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     
     encdec = EncoderDecoder()
-    criterion = nn.L1Loss()
-    optimizer = optim.Adam(encdec.parameters(), lr=lr)
+    criterionED = nn.L1Loss()
+    optimizerED = optim.Adam(encdec.parameters(), lr=lr)
+
+    disc = Discriminator()
+    criterionD = nn.BCELoss()
+    optimizerD = optim.Adam(disc.parameters(), lr=lr)
     
     # training loop
     for epoch in range(num_epochs):
         running_loss = 0.0
         for i, data in enumerate(dataloader):
-            # zero out gradients
+            ###########################
+            # update disc
+            ###########################
+            disc.zero_grad()
+            # all real batch
+            b_size = data['c2'].size(0)
+            label = torch.full((b_size,), real_label, dtype=torch.float, device=device)
+            outputD = disc(data['c2']).view(-1)
+            lossD_real = criterionD(outputD, label)
+            lossD_real.backward()
+            # all fake batch
+            outputED = encdec(data['c1'])
+            label.fill_(fake_label)
+            outputD = disc(outputED.detach()).view(-1)
+            lossD_fake = criterionD(outputD, label)
+            lossD_fake.backward()
+
+            lossD = lossD_real + lossD_fake
+            optimizerD.step()
+
+            ###########################
+            # update encdec
+            ###########################
             encdec.zero_grad()
-            output = encdec(data['c1'])
-            loss = criterion(output, data['c2'])
-            loss.backward()
-            optimizer.step()
+            # rerun disc
+            label.fill_(real_label)
+            outputD = disc(outputED).view(-1)
+            lossED_disc = criterionD(outputD, label)
+            # run encdec
+            lossED_super = criterionD(outputED, data['c2'])
+
+            lossED = lossED_disc + lossED_super
+            lossED.backward()
+            optimizerED.step()
     
-            running_loss += loss.item()
-            if i % 50 == 99:
+            running_loss += lossED.item()
+            if i % 50 == 49:
                 print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
                 running_loss = 0.0
     
