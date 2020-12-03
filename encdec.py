@@ -45,8 +45,8 @@ class FontDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path1 = os.path.join(self.root_dir, "d/", f"{idx}.npy")
-        img_path2 = os.path.join(self.root_dir, "b/", f"{idx}.npy")
+        img_path1 = os.path.join(self.root_dir, "R/", f"{idx}.npy")
+        img_path2 = os.path.join(self.root_dir, "B/", f"{idx}.npy")
 
         img1 = np.load(img_path1)
         img2 = np.load(img_path2)
@@ -124,7 +124,7 @@ def main():
             optimizer.step()
     
             running_loss += loss.item()
-            if i % 100 == 99:
+            if i % 50 == 99:
                 print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
                 running_loss = 0.0
     

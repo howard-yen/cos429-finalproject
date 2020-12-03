@@ -13,7 +13,8 @@ def save_fonts(ttf_path, idx, save_dir, font_size=24, img_size=48):
     face.set_pixel_sizes(font_size, font_size)
     slot = face.glyph
 
-    alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    #alphabet = 'abcdefghijklmnopqrstuvwxyz'
+    alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     for i, c in enumerate(alphabet):
         face.load_char(c)
