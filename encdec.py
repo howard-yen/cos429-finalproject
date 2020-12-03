@@ -20,7 +20,7 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 30
+num_epochs = 10
 # batch size for training
 batch_size = 32
 # height and width of input image
@@ -30,6 +30,8 @@ nc0 = 1
 nc1 = 4
 nc2 = 8
 nc3 = 16
+# threshold
+thresh = -0.4
 # learning rate
 lr = 0.002
 # beta1 for Adam
@@ -87,7 +89,8 @@ class EncoderDecoder(nn.Module):
         self.pool = nn.MaxPool2d(2, return_indices=True)
         self.unpool = nn.MaxUnpool2d(2)
         self.relu = nn.ReLU(inplace=True)
-        self.sigmoid = nn.Sigmoid()
+        self.sigmoid= nn.Sigmoid()
+        self.threshold = nn.Threshold(thresh, -10)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -112,8 +115,9 @@ class EncoderDecoder(nn.Module):
         #x = self.unpool(x, idx1)
         x = self.deconv1(x)
         x = self.batchnorm0(x)
-        x = self.relu(x)
+        #x = self.relu(x)
 
+        x = self.threshold(x)
         x = self.sigmoid(x)
         return x
 
@@ -198,7 +202,7 @@ def main():
             # run encdec
             lossED_super = criterionD(outputED, data['c2'])
 
-            lossED = lossED_disc + 60 * lossED_super
+            lossED = 0 * lossED_disc + lossED_super
             lossED.backward()
             optimizerED.step()
     
