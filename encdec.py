@@ -1,12 +1,12 @@
 import os
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+import matplotlib.pyplot as plt
 
 #device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 device = "cpu"
@@ -19,9 +19,9 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 100
+num_epochs = 30
 # batch size for training
-batch_size = 8
+batch_size = 32
 # height and width of input image
 img_size = 32
 # number of channels
@@ -29,7 +29,7 @@ nc0 = 1
 nc1 = 4
 nc2 = 8
 # learning rate
-lr = 0.0002
+lr = 0.002
 # beta1 for Adam
 beta1 = 0.5
 
@@ -46,8 +46,8 @@ class FontDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_path1 = os.path.join(self.root_dir, "a/", f"{idx}.npy")
-        img_path2 = os.path.join(self.root_dir, "b/", f"{idx}.npy")
+        img_path1 = os.path.join(self.root_dir, "R/", f"{idx}.npy")
+        img_path2 = os.path.join(self.root_dir, "B/", f"{idx}.npy")
 
         img1 = np.load(img_path1)
         img2 = np.load(img_path2)
@@ -67,68 +67,86 @@ class EncoderDecoder(nn.Module):
         super(EncoderDecoder, self).__init__()
         self.conv1 = nn.Conv2d(nc0, nc1, 3, padding=1)
         self.conv2 = nn.Conv2d(nc1, nc2, 3, padding=1)
+        self.conv1strided = nn.Conv2d(nc1, nc1, 3, stride=2, padding=1)
+        self.conv2strided = nn.Conv2d(nc2, nc2, 3, stride=2, padding=1)
+
         self.deconv1 = nn.ConvTranspose2d(nc1, nc0, 3, padding=1)
         self.deconv2 = nn.ConvTranspose2d(nc2, nc1, 3, padding=1)
+        self.deconv1strided = nn.ConvTranspose2d(nc1, nc1, 3, stride=2, padding=1, output_padding=1)
+        self.deconv2strided = nn.ConvTranspose2d(nc2, nc2, 3, stride=2, padding=1, output_padding=1)
+
         self.batchnorm0 = nn.BatchNorm2d(nc0)
         self.batchnorm1 = nn.BatchNorm2d(nc1)
         self.batchnorm2 = nn.BatchNorm2d(nc2)
         self.pool = nn.MaxPool2d(2, return_indices=True)
         self.unpool = nn.MaxUnpool2d(2)
         self.relu = nn.ReLU(inplace=True)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.batchnorm1(x)
         x = self.relu(x)
-        x, idx1 = self.pool(x)
+        #x, idx1 = self.pool(x)
+        x = self.conv1strided(x)
 
         x = self.conv2(x)
         x = self.batchnorm2(x)
         x = self.relu(x)
-        x, idx2 = self.pool(x)
+        #x, idx2 = self.pool(x)
+        x = self.conv2strided(x)
 
-        x = self.unpool(x, idx2)
+        x = self.deconv2strided(x)
+        #x = self.unpool(x, idx2)
         x = self.deconv2(x)
         x = self.batchnorm1(x)
         x = self.relu(x)
 
-        x = self.unpool(x, idx1)
+        x = self.deconv1strided(x)
+        #x = self.unpool(x, idx1)
         x = self.deconv1(x)
         x = self.batchnorm0(x)
         x = self.relu(x)
 
+        x = self.sigmoid(x)
         return x
 
-dataset = FontDataset(csv_file=fonts_csv,
-                      root_dir=dataroot,
-                      transform=transforms.Compose([
-                          transforms.ToTensor(),
-                          #transforms.Normalize(0.5, 0.5),
-                      ]))
+def main():
 
-dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+    dataset = FontDataset(csv_file=fonts_csv, 
+                        root_dir=dataroot, 
+                        transform=transforms.Compose([
+                            transforms.ToTensor(),
+                            #transforms.Normalize(0.5, 0.5),
+                        ]))
+    
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
+    
+    encdec = EncoderDecoder()
+    criterion = nn.L1Loss()
+    optimizer = optim.Adam(encdec.parameters(), lr=lr)
+    
+    # training loop
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        for i, data in enumerate(dataloader):
+            # zero out gradients
+            encdec.zero_grad()
+            output = encdec(data['c1'])
+            if epoch % 10 == 0 and i == 0:
+                plt.imshow(output[0].permute(1, 2, 0).detach().numpy())
+                plt.show()
+            loss = criterion(output, data['c2'])
+            loss.backward()
+            optimizer.step()
+    
+            running_loss += loss.item()
+            if i % 10 == 9:
+                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
+                running_loss = 0.0
+    
+    torch.save(encdec.state_dict(), 'encdec.pt')
+    print("Done")
 
-encdec = EncoderDecoder()
-criterion = nn.L1Loss()
-optimizer = optim.Adam(encdec.parameters(), lr=lr, betas=(beta1, 0.999))
-
-# training loop
-for epoch in range(num_epochs):
-    running_loss = 0.0
-    for i, data in enumerate(dataloader):
-        # zero out gradients
-        encdec.zero_grad()
-        output = encdec(data['c1'])
-        if epoch % 10 == 0 and i == 0:
-            plt.imshow(output[0].permute(1, 2, 0).detach().numpy())
-            plt.show()
-        loss = criterion(output, data['c2'])
-        loss.backward()
-        optimizer.step()
-
-        running_loss += loss.item()
-        if i % 100 == 99:
-            print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
-            running_loss = 0.0
-
-print("Done")
+if __name__=='__main__':
+    main()
