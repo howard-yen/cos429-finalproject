@@ -18,7 +18,7 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 50
+num_epochs = 30
 # batch size for training
 batch_size = 32
 # height and width of input image
@@ -71,7 +71,7 @@ class EncoderDecoder(nn.Module):
         self.pool = nn.MaxPool2d(2, return_indices=True)
         self.unpool = nn.MaxUnpool2d(2)
         self.relu = nn.ReLU(inplace=True)
-        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -94,7 +94,7 @@ class EncoderDecoder(nn.Module):
         x = self.batchnorm0(x)
         x = self.relu(x)
 
-        x = self.tanh(x)
+        x = self.sigmoid(x)
         return x
 
 def main():
