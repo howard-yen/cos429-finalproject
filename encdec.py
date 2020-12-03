@@ -7,6 +7,7 @@ import torch
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
+import matplotlib.pyplot as plt
 
 #device = torch.device("cuda:0" if (torch.cuda.is_available() and ngpu > 0) else "cpu")
 device = "cpu"
@@ -23,7 +24,7 @@ num_epochs = 30
 # batch size for training
 batch_size = 32
 # height and width of input image
-img_size = 48
+img_size = 32
 # number of channels
 nc0 = 1
 nc1 = 4
@@ -57,6 +58,9 @@ class FontDataset(Dataset):
         img1 = np.load(img_path1)
         img2 = np.load(img_path2)
 
+        img1 = img1[8:40, 8:40, :]
+        img2 = img2[8:40, 8:40, :]
+
         img1 = self.transform(img1)
         img2 = self.transform(img2)
 
@@ -69,8 +73,14 @@ class EncoderDecoder(nn.Module):
         super(EncoderDecoder, self).__init__()
         self.conv1 = nn.Conv2d(nc0, nc1, 3, padding=1)
         self.conv2 = nn.Conv2d(nc1, nc2, 3, padding=1)
+        self.conv1strided = nn.Conv2d(nc1, nc1, 3, stride=2, padding=1)
+        self.conv2strided = nn.Conv2d(nc2, nc2, 3, stride=2, padding=1)
+
         self.deconv1 = nn.ConvTranspose2d(nc1, nc0, 3, padding=1)
         self.deconv2 = nn.ConvTranspose2d(nc2, nc1, 3, padding=1)
+        self.deconv1strided = nn.ConvTranspose2d(nc1, nc1, 3, stride=2, padding=1, output_padding=1)
+        self.deconv2strided = nn.ConvTranspose2d(nc2, nc2, 3, stride=2, padding=1, output_padding=1)
+
         self.batchnorm0 = nn.BatchNorm2d(nc0)
         self.batchnorm1 = nn.BatchNorm2d(nc1)
         self.batchnorm2 = nn.BatchNorm2d(nc2)
@@ -83,19 +93,23 @@ class EncoderDecoder(nn.Module):
         x = self.conv1(x)
         x = self.batchnorm1(x)
         x = self.relu(x)
-        x, idx1 = self.pool(x)
+        #x, idx1 = self.pool(x)
+        x = self.conv1strided(x)
 
         x = self.conv2(x)
         x = self.batchnorm2(x)
         x = self.relu(x)
-        x, idx2 = self.pool(x)
+        #x, idx2 = self.pool(x)
+        x = self.conv2strided(x)
 
-        x = self.unpool(x, idx2)
+        x = self.deconv2strided(x)
+        #x = self.unpool(x, idx2)
         x = self.deconv2(x)
         x = self.batchnorm1(x)
         x = self.relu(x)
 
-        x = self.unpool(x, idx1)
+        x = self.deconv1strided(x)
+        #x = self.unpool(x, idx1)
         x = self.deconv1(x)
         x = self.batchnorm0(x)
         x = self.relu(x)
