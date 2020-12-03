@@ -23,7 +23,7 @@ num_epochs = 100
 # batch size for training
 batch_size = 8
 # height and width of input image
-img_size = 48
+img_size = 32
 # number of channels
 nc0 = 1
 nc1 = 4
@@ -51,6 +51,9 @@ class FontDataset(Dataset):
 
         img1 = np.load(img_path1)
         img2 = np.load(img_path2)
+
+        img1 = img1[8:40, 8:40, :]
+        img2 = img2[8:40, 8:40, :]
 
         img1 = self.transform(img1)
         img2 = self.transform(img2)
@@ -96,8 +99,8 @@ class EncoderDecoder(nn.Module):
 
         return x
 
-dataset = FontDataset(csv_file=fonts_csv, 
-                      root_dir=dataroot, 
+dataset = FontDataset(csv_file=fonts_csv,
+                      root_dir=dataroot,
                       transform=transforms.Compose([
                           transforms.ToTensor(),
                           #transforms.Normalize(0.5, 0.5),
@@ -116,7 +119,7 @@ for epoch in range(num_epochs):
         # zero out gradients
         encdec.zero_grad()
         output = encdec(data['c1'])
-        if epoch > 95:
+        if epoch % 10 == 0 and i == 0:
             plt.imshow(output[0].permute(1, 2, 0).detach().numpy())
             plt.show()
         loss = criterion(output, data['c2'])
