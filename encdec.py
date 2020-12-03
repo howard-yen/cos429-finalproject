@@ -36,7 +36,7 @@ beta1 = 0.5
 # real label
 real_label = 1.0
 # fake label
-fake_label = 1.0
+fake_label = 0.0
 
 class FontDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
@@ -122,7 +122,7 @@ class Discriminator(nn.Module):
             # 16 x img_size/8 x img_size/8
             nn.Flatten(),
             nn.Linear(nc3 * img_size // 8 * img_size // 8, 1),
-            nn.Softmax(dim=0),
+            nn.Sigmoid(),
         )
 
     def forward(self, input):
@@ -149,7 +149,9 @@ def main():
     
     # training loop
     for epoch in range(num_epochs):
-        running_loss = 0.0
+        running_lossD = 0.0
+        running_loss_disc = 0.0
+        running_loss_super = 0.0
         for i, data in enumerate(dataloader):
             ###########################
             # update disc
@@ -182,14 +184,18 @@ def main():
             # run encdec
             lossED_super = criterionD(outputED, data['c2'])
 
-            lossED = lossED_disc + lossED_super
+            lossED = lossED_disc + 60 * lossED_super
             lossED.backward()
             optimizerED.step()
     
-            running_loss += lossED.item()
+            running_lossD += lossD.item()
+            running_loss_disc += lossED_disc.item()
+            running_loss_super += lossED_super.item()
             if i % 50 == 49:
-                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss {running_loss}")
-                running_loss = 0.0
+                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss D {running_lossD}, Loss Disc {running_loss_disc}, Loss Super {running_loss_super}")
+                running_lossD = 0.0
+                running_loss_disc = 0.0
+                running_loss_super = 0.0
     
     torch.save(encdec.state_dict(), 'encdec.pt')
     print("Done")
