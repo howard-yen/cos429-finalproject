@@ -4,11 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from freetype import *
 
-def save_fonts(ttf_path, idx, save_dir, font_size=24, img_size=48):
+def save_fonts(ttf_path, idx, save_dir, font_size=64, img_size=128):
     if not path.exists(save_dir):
+        print('not exist')
         mkdir(save_dir)
 
-    print(ttf_path)
     face = Face(ttf_path)
     face.set_pixel_sizes(font_size, font_size)
     slot = face.glyph
@@ -26,11 +26,19 @@ def save_fonts(ttf_path, idx, save_dir, font_size=24, img_size=48):
         x = (img_size - h) // 2
         y = (img_size - w) // 2
 
-        imgpath = os.path.join(save_dir, f'{c}', f'{idx}')
+        if not path.exists(path.join(save_dir, f'{c}')):
+            mkdir(path.join(save_dir, f'{c}'))
+
+        imgpath = path.join(save_dir, f'{c}', f'{idx}')
         img = np.zeros((img_size, img_size, 1), dtype='uint8')
 
         temp = np.reshape(bitmap.buffer[:h*w], (h, w))
-        img[x:x+h, y:y+w, 0] = temp
+        try:
+            img[x:x+h, y:y+w, 0] = temp
+        except ValueError:
+            os.remove(ttf_path)
+            print(ttf_path)
+            return
 
         #plt.imsave(imgpath, img, cmap='gray')
         np.save(imgpath, img)
