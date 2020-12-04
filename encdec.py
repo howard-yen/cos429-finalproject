@@ -33,7 +33,7 @@ nc3 = 16
 # threshold
 thresh = 0
 # learning rate
-lr = 0.0008
+lr = 0.002
 # beta1 for Adam
 beta1 = 0.5
 # real label
@@ -204,7 +204,7 @@ def main():
             # run encdec
             lossED_super = criterionED(outputED, data['c2'])
 
-            lossED = 0.02 * lossED_disc + lossED_super
+            lossED = 0 * lossED_disc + lossED_super
             lossED.backward()
             optimizerED.step()
     
