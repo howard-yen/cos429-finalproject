@@ -41,6 +41,17 @@ real_label = 1.0
 # fake label
 fake_label = 0.0
 
+class AddGaussianNoise(object):
+    def __init__(self, mean=0., std=1.):
+        self.std = std
+        self.mean = mean
+        
+    def __call__(self, tensor):
+        return tensor + torch.randn(tensor.size()) * self.std + self.mean
+    
+    def __repr__(self):
+        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+
 class FontDataset(Dataset):
     def __init__(self, csv_file, root_dir, transform=None):
         self.fontlist = pd.read_csv(csv_file, sep=' ')
@@ -155,6 +166,7 @@ def main():
                         transform=transforms.Compose([
                             transforms.ToTensor(),
                             transforms.Normalize(0.5, 0.5),
+                            AddGaussianNoise(0., 0.05),
                         ]))
     
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
