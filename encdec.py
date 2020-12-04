@@ -204,7 +204,7 @@ def main():
             # run encdec
             lossED_super = criterionED(outputED, data['c2'])
 
-            lossED = 0 * lossED_disc + lossED_super
+            lossED = 0.02 * lossED_disc + lossED_super
             lossED.backward()
             optimizerED.step()
     
