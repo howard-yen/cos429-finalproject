@@ -17,7 +17,7 @@ dataset = FontDataset(csv_file=fonts_csv,
                       root_dir=dataroot, 
                       transform=transforms.Compose([
                           transforms.ToTensor(),
-                          #transforms.Normalize(0.5, 0.5),
+                          transforms.Normalize(0.5, 0.5),
                       ]))
 
 dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=workers)

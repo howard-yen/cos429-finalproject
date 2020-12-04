@@ -20,7 +20,7 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 10
+num_epochs = 30
 # batch size for training
 batch_size = 32
 # height and width of input image
@@ -31,9 +31,9 @@ nc1 = 4
 nc2 = 8
 nc3 = 16
 # threshold
-thresh = -0.4
+thresh = 0
 # learning rate
-lr = 0.002
+lr = 0.0008
 # beta1 for Adam
 beta1 = 0.5
 # real label
@@ -89,19 +89,21 @@ class EncoderDecoder(nn.Module):
         self.pool = nn.MaxPool2d(2, return_indices=True)
         self.unpool = nn.MaxUnpool2d(2)
         self.relu = nn.ReLU(inplace=True)
-        self.sigmoid= nn.Sigmoid()
-        self.threshold = nn.Threshold(thresh, -10)
+        self.leakyrelu = nn.LeakyReLU(0.2, inplace=True)
+        self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
+        self.threshold = nn.Threshold(thresh, 0)
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.batchnorm1(x)
-        x = self.relu(x)
+        x = self.leakyrelu(x)
         #x, idx1 = self.pool(x)
         x = self.conv1strided(x)
 
         x = self.conv2(x)
         x = self.batchnorm2(x)
-        x = self.relu(x)
+        x = self.leakyrelu(x)
         #x, idx2 = self.pool(x)
         x = self.conv2strided(x)
 
@@ -109,7 +111,7 @@ class EncoderDecoder(nn.Module):
         #x = self.unpool(x, idx2)
         x = self.deconv2(x)
         x = self.batchnorm1(x)
-        x = self.relu(x)
+        x = self.leakyrelu(x)
 
         x = self.deconv1strided(x)
         #x = self.unpool(x, idx1)
@@ -117,8 +119,8 @@ class EncoderDecoder(nn.Module):
         x = self.batchnorm0(x)
         #x = self.relu(x)
 
-        x = self.threshold(x)
-        x = self.sigmoid(x)
+        #x = self.threshold(x)
+        x = self.tanh(x)
         return x
 
 class Discriminator(nn.Module):
@@ -152,7 +154,7 @@ def main():
                         root_dir=dataroot, 
                         transform=transforms.Compose([
                             transforms.ToTensor(),
-                            #transforms.Normalize(0.5, 0.5),
+                            transforms.Normalize(0.5, 0.5),
                         ]))
     
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
@@ -200,7 +202,7 @@ def main():
             outputD = disc(outputED).view(-1)
             lossED_disc = criterionD(outputD, label)
             # run encdec
-            lossED_super = criterionD(outputED, data['c2'])
+            lossED_super = criterionED(outputED, data['c2'])
 
             lossED = 0 * lossED_disc + lossED_super
             lossED.backward()
