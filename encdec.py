@@ -27,9 +27,9 @@ batch_size = 32
 img_size = 32
 # number of channels
 nc0 = 1
-nc1 = 4
-nc2 = 8
-nc3 = 16
+nc1 = 8
+nc2 = 16
+nc3 = 32
 # threshold
 thresh = 0
 # learning rate
@@ -141,15 +141,15 @@ class Discriminator(nn.Module):
             # 1 x img_size x img_size
             nn.Conv2d(nc0, nc1, 4, stride=2, padding=1),
             nn.BatchNorm2d(nc1),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             # 4 x img_size/2 x img_size/2
             nn.Conv2d(nc1, nc2, 4, stride=2, padding=1),
             nn.BatchNorm2d(nc2),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             # 8 x img_size/4 x img_size/4
             nn.Conv2d(nc2, nc3, 4, stride=2, padding=1),
             nn.BatchNorm2d(nc3),
-            nn.ReLU(inplace=True),
+            nn.LeakyReLU(0.2, inplace=True),
             # 16 x img_size/8 x img_size/8
             nn.Flatten(),
             nn.Linear(nc3 * img_size // 8 * img_size // 8, 1),
