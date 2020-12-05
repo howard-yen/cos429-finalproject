@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from freetype import *
 
-def save_fonts(ttf_path, idx, save_dir, font_size=64, img_size=128):
+def save_fonts(ttf_path, idx, save_dir, font_size=56, img_size=128):
     if not path.exists(save_dir):
         print('not exist')
         mkdir(save_dir)
@@ -22,6 +22,8 @@ def save_fonts(ttf_path, idx, save_dir, font_size=64, img_size=128):
 
         h = bitmap.rows
         w = bitmap.width
+        if h > 64 or w > 64:
+            return -1
 
         x = (img_size - h) // 2
         y = (img_size - w) // 2
@@ -38,19 +40,25 @@ def save_fonts(ttf_path, idx, save_dir, font_size=64, img_size=128):
         except ValueError:
             os.remove(ttf_path)
             print(ttf_path)
-            return
+            return -2
 
         #plt.imsave(imgpath, img, cmap='gray')
         np.save(imgpath, img)
+        return 0
 
 def main():
+    count = 0
     f = open('fonts.csv', 'w')
     for i, entry in enumerate(os.scandir('./fonts')):
         if entry.is_file():
-            f.write(f'{i} {entry.path}\n')
-            save_fonts(entry.path, i, './images')
+            ret = save_fonts(entry.path, i, './images')
+            if ret == -1:
+                count+=1    
+            else:
+                f.write(f'{i} {entry.path}\n')
 
     f.close()
+    print(f'count is {count}')
 
 if __name__ == '__main__':
     main()
