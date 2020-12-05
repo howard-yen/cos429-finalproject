@@ -24,7 +24,7 @@ num_epochs = 30
 # batch size for training
 batch_size = 32
 # height and width of input image
-img_size = 32
+img_size = 64
 # number of channels
 nc0 = 1
 nc1 = 4
@@ -71,8 +71,8 @@ class FontDataset(Dataset):
         img1 = np.load(img_path1)
         img2 = np.load(img_path2)
 
-        img1 = img1[8:40, 8:40, :]
-        img2 = img2[8:40, 8:40, :]
+        img1 = img1[img_size//2 : img_size//2 + img_size, img_size//2 : img_size//2 + img_size, :]
+        img2 = img2[img_size//2 : img_size//2 + img_size, img_size//2 : img_size//2 + img_size, :]
 
         img1 = self.transform(img1)
         img2 = self.transform(img2)
