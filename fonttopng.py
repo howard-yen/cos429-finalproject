@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from freetype import *
 
-def save_fonts(ttf_path, idx, save_dir, font_size=56, img_size=128):
+def save_fonts(ttf_path, idx, save_dir, font_size=48, img_size=128):
     if not path.exists(save_dir):
         print('not exist')
         mkdir(save_dir)
@@ -16,17 +16,23 @@ def save_fonts(ttf_path, idx, save_dir, font_size=56, img_size=128):
     #alphabet = 'abcdefghijklmnopqrstuvwxyz'
     alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
+    save_files = []
     for i, c in enumerate(alphabet):
         face.load_char(c)
         bitmap = slot.bitmap
 
         h = bitmap.rows
         w = bitmap.width
-        if h > 64 or w > 64:
-            return -1
-
+        
         x = (img_size - h) // 2
         y = (img_size - w) // 2
+        
+        if h > 64 or w > 64:
+#             print(h, w)
+            return -1
+
+#         if h < 20 or w < 20:
+#             print(h, w)
 
         if not path.exists(path.join(save_dir, f'{c}')):
             mkdir(path.join(save_dir, f'{c}'))
@@ -43,22 +49,35 @@ def save_fonts(ttf_path, idx, save_dir, font_size=56, img_size=128):
             return -2
 
         #plt.imsave(imgpath, img, cmap='gray')
+
+        save_files.append((imgpath, img))
+#         if w == 0 or h == 0:
+#             print(ttf_path)
+#             plt.imshow(img, cmap='gray')
+#             plt.show()
+
+    for (impath, img) in save_files:
         np.save(imgpath, img)
-        return 0
+
+    return 0
 
 def main():
     count = 0
+    c2 = 0
     f = open('fonts.csv', 'w')
     for i, entry in enumerate(os.scandir('./fonts')):
         if entry.is_file():
             ret = save_fonts(entry.path, i, './images')
             if ret == -1:
                 count+=1    
+            elif ret == -2:
+                c2 += 1
             else:
                 f.write(f'{i} {entry.path}\n')
 
     f.close()
     print(f'count is {count}')
+    print(f'c2 is {c2}')
 
 if __name__ == '__main__':
     main()
