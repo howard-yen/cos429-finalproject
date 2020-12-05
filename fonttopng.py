@@ -57,7 +57,7 @@ def save_fonts(ttf_path, idx, save_dir, font_size=48, img_size=128):
 #             plt.show()
 
     for (impath, img) in save_files:
-        np.save(imgpath, img)
+        np.save(impath, img)
 
     return 0
 
