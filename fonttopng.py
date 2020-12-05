@@ -65,19 +65,21 @@ def main():
     count = 0
     c2 = 0
     f = open('fonts.csv', 'w')
+    idx = 0
     for i, entry in enumerate(os.scandir('./fonts')):
         if entry.is_file():
-            ret = save_fonts(entry.path, i, './images')
+            ret = save_fonts(entry.path, idx, './images')
             if ret == -1:
-                count+=1    
+                count+=1
             elif ret == -2:
                 c2 += 1
             else:
-                f.write(f'{i} {entry.path}\n')
+                idx += 1
+                f.write(f'{idx} {entry.path}\n')
 
     f.close()
     print(f'count is {count}')
     print(f'c2 is {c2}')
 
-if __name__ == '__main__':
+if __name__=='__main__':
     main()

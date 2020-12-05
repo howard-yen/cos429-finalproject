@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pytorch_msssim import SSIM
+from pytorch_msssim import MS_SSIM
 import torch
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
@@ -21,7 +21,7 @@ dataroot = "images"
 # number of workers for dataloader
 workers = 0
 # number of epochs
-num_epochs = 30
+num_epochs = 15
 # batch size for training
 batch_size = 32
 # height and width of input image
@@ -87,6 +87,10 @@ class EncoderDecoder(nn.Module):
         super(EncoderDecoder, self).__init__()
         self.conv1 = nn.Conv2d(nc0, nc1, 3, padding=1)
         self.conv2 = nn.Conv2d(nc1, nc2, 3, padding=1)
+        self.conv3 = nn.Conv2d(nc2, nc2, 3, padding=1)
+        self.conv2back = nn.Conv2d(nc2, nc1, 3, padding=1)
+        self.conv1back = nn.Conv2d(nc1, nc0, 3, padding=1)
+        
         self.conv1strided = nn.Conv2d(nc1, nc1, 3, stride=2, padding=1)
         self.conv2strided = nn.Conv2d(nc2, nc2, 3, stride=2, padding=1)
 
@@ -108,30 +112,41 @@ class EncoderDecoder(nn.Module):
 
     def forward(self, x):
         x = self.conv1(x)
-        x = self.batchnorm1(x)
         x = self.leakyrelu(x)
-        #x, idx1 = self.pool(x)
-        x = self.conv1strided(x)
-
         x = self.conv2(x)
-        x = self.batchnorm2(x)
         x = self.leakyrelu(x)
-        #x, idx2 = self.pool(x)
-        x = self.conv2strided(x)
+        x, idx1 = self.pool(x)
 
-        x = self.deconv2strided(x)
-        #x = self.unpool(x, idx2)
-        x = self.deconv2(x)
-        x = self.batchnorm1(x)
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
+        x, idx2 = self.pool(x)
+
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
+        x, idx3 = self.pool(x)
+
+        x = self.unpool(x, idx3)
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
+        x = self.conv3(x)
         x = self.leakyrelu(x)
 
-        x = self.deconv1strided(x)
-        #x = self.unpool(x, idx1)
-        x = self.deconv1(x)
-        x = self.batchnorm0(x)
-        #x = self.relu(x)
+        x = self.unpool(x, idx2)
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
+        x = self.conv3(x)
+        x = self.leakyrelu(x)
 
-        #x = self.threshold(x)
+        x = self.unpool(x, idx1)
+        x = self.conv2back(x)
+        x = self.leakyrelu(x)
+        x = self.conv1back(x)
+        x = self.leakyrelu(x)
+
         x = self.tanh(x)
         return x
 
@@ -174,7 +189,7 @@ def main():
     
     encdec = EncoderDecoder()
     criterionED_l1 = nn.L1Loss()
-    criterionED_ssim = SSIM(data_range=1, size_average=True, channel=1)
+    criterionED_ssim = MS_SSIM(win_size=3, data_range=1, size_average=True, channel=1)
     optimizerED = optim.Adam(encdec.parameters(), lr=lr)
 
     disc = Discriminator()
@@ -229,7 +244,7 @@ def main():
             running_loss_disc += lossED_disc.item()
             running_loss_l1 += lossED_l1.item()
             if i % 50 == 49:
-                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss D {running_lossD}, Loss Disc {running_loss_disc}, Loss Super {running_loss_l1}")
+                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss D {running_lossD}, Loss Disc {running_loss_disc}, Loss L1 {running_loss_l1}")
                 running_lossD = 0.0
                 running_loss_disc = 0.0
                 running_loss_l1 = 0.0
