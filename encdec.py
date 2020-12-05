@@ -3,6 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from pytorch_msssim import SSIM
 import torch
 from torch import nn, optim
 from torch.utils.data import Dataset, DataLoader
@@ -172,7 +173,8 @@ def main():
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers)
     
     encdec = EncoderDecoder()
-    criterionED = nn.L1Loss()
+    criterionED_l1 = nn.L1Loss()
+    criterionED_ssim = SSIM(data_range=1, size_average=True, channel=1)
     optimizerED = optim.Adam(encdec.parameters(), lr=lr)
 
     disc = Discriminator()
@@ -183,7 +185,7 @@ def main():
     for epoch in range(num_epochs):
         running_lossD = 0.0
         running_loss_disc = 0.0
-        running_loss_super = 0.0
+        running_loss_l1 = 0.0
         for i, data in enumerate(dataloader):
             ###########################
             # update disc
@@ -214,20 +216,23 @@ def main():
             outputD = disc(outputED).view(-1)
             lossED_disc = criterionD(outputD, label)
             # run encdec
-            lossED_super = criterionED(outputED, data['c2'])
+            lossED_l1 = criterionED_l1(outputED, data['c2'])
+            outputED_norm = (outputED + 1) / 2
+            datac2_norm = (data['c2'] + 1) / 2
+            lossED_ssim = 1 - criterionED_ssim(outputED_norm, datac2_norm)
 
-            lossED = 0 * lossED_disc + lossED_super
+            lossED = 0 * lossED_disc + 0.16 * lossED_l1 + 0.84 * lossED_ssim
             lossED.backward()
             optimizerED.step()
     
             running_lossD += lossD.item()
             running_loss_disc += lossED_disc.item()
-            running_loss_super += lossED_super.item()
+            running_loss_l1 += lossED_l1.item()
             if i % 50 == 49:
-                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss D {running_lossD}, Loss Disc {running_loss_disc}, Loss Super {running_loss_super}")
+                print(f"Epoch {epoch+1}, Iteration {i+1}, Loss D {running_lossD}, Loss Disc {running_loss_disc}, Loss Super {running_loss_l1}")
                 running_lossD = 0.0
                 running_loss_disc = 0.0
-                running_loss_super = 0.0
+                running_loss_l1 = 0.0
     
     torch.save(encdec.state_dict(), 'encdec.pt')
     print("Done")
