@@ -41,6 +41,7 @@ juypter notebook
 Our dataset is located in the folder /images/, where each letter is in its own folder. The correspondence between the file name to the font name can be found in fonts.csv.
 
 You can also generate the images yourself by running the code in "fonttopng.ipynb", where you can also specify the image size and the font size.
+
 ---
 ## Model
 
@@ -51,6 +52,7 @@ encdec.load_state_dict(torch.load(model_file))
 ```
 You can also modify the network as well as train it from scratch by running the code in "train.ipynb".
 We recommend doing the training on a GPU as it will increase the training speed significantly, and our script automatically detects if you have the proper nvidia drivers and cuda set up. 
+
 ---
 ## Evaluation
 
