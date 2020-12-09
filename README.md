@@ -4,10 +4,10 @@
 ---
 ## Table of Contents
 
--[Installation](#installation)
--[Dataset](#Dataset)
--[Model](#Model)
--[Evaluation](#Evaluation)
+- [Installation](#installation)
+- [Dataset](#Dataset)
+- [Model](#Model)
+- [Evaluation](#Evaluation)
 
 ---
 ## Installation
@@ -50,6 +50,7 @@ encdec = EncoderDecoder()
 encdec.load_state_dict(torch.load(model_file))
 ```
 You can also modify the network as well as train it from scratch by running the code in "train.ipynb".
+We recommend doing the training on a GPU as it will increase the training speed significantly, and our script automatically detects if you have the proper nvidia drivers and cuda set up. 
 
 ## Evaluation
 
