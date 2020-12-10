@@ -53,7 +53,7 @@ juypter notebook
 
 ## Dataset
 
-Our dataset is located in the folder /images/, where each letter is in its own folder. The correspondences between the file name to the font name can be found in fonts.csv.
+Our dataset is located in the folder /images/, where each letter is in its own folder. The correspondences between file names and font names can be found in fonts.csv.
 
 You can also generate the images yourself by running the code in "fonttopng.ipynb", where you can also specify the image size and the font size.
 
