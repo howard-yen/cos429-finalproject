@@ -1,4 +1,4 @@
-# COS429 Final Project: Generating Font using GAN
+# COS429 Final Project: Font Generation Using Autoencoders and Discriminator Networks
 > Final project for COS429: Computer Vision. We aim to use DCGAN to develop a network that is able to generate a complete set of fonts when given an image of a single character.
 
 ---
